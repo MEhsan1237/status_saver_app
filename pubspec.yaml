@@ -27,7 +27,7 @@ dependencies:
   shimmer: ^3.0.0
   device_info_plus: ^10.1.0
   video_thumbnail: ^0.5.3
-  shared_storage: ^0.6.0
+  # shared_storage: ^0.6.0 (Removing due to SDK incompatibility)
 
 dev_dependencies:
   flutter_test:

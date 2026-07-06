@@ -632,14 +632,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.4.1"
-  shared_storage:
-    dependency: "direct main"
-    description:
-      name: shared_storage
-      sha256: "85473559ecadb59078874ecd4f9ac57c4b0e0680a2bc2760b2a18be63cd02102"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.6.0"
   shimmer:
     dependency: "direct main"
     description:

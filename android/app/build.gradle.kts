@@ -19,6 +19,10 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    dependencies {
+        implementation("androidx.documentfile:documentfile:1.0.1")
+    }
+
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.senior.status_saver"
@@ -32,6 +36,14 @@ android {
 
     buildTypes {
         release {
+            // Enabling shrinking, obfuscation, and optimization.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")

@@ -2,7 +2,6 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
-import 'package:shared_storage/shared_storage.dart' as saf;
 import 'package:path/path.dart' as p;
 
 class SAFService {
@@ -18,7 +17,12 @@ class SAFService {
   static Future<bool> hasPermission({bool isBusiness = false}) async {
     final uri = await getPersistedUri(isBusiness: isBusiness);
     if (uri == null) return false;
-    return await _channel.invokeMethod('checkFolderPermission', {'uri': uri});
+    try {
+      final bool? hasPerm = await _channel.invokeMethod('checkFolderPermission', {'uri': uri});
+      return hasPerm ?? false;
+    } catch (e) {
+      return false;
+    }
   }
 
   static Future<String?> requestFolderPermission({bool isBusiness = false}) async {
@@ -43,33 +47,39 @@ class SAFService {
     final uri = await getPersistedUri(isBusiness: isBusiness);
     if (uri == null) return [];
 
-    final List<File> syncedFiles = [];
-    final cacheDir = await getTemporaryDirectory();
-    final statusDir = Directory(p.join(cacheDir.path, isBusiness ? 'statuses_business' : 'statuses_messenger'));
-    
-    if (!await statusDir.exists()) {
-      await statusDir.create(recursive: true);
-    }
+    try {
+      final List<dynamic>? filesList = await _channel.invokeMethod('listStatusFiles', {'uri': uri});
+      
+      if (filesList == null) return [];
 
-    // Use shared_storage to list files
-    final files = await saf.listFiles(Uri.parse(uri), columns: [saf.DocumentFileColumn.displayName, saf.DocumentFileColumn.size]).toList();
-    
-    for (var file in files) {
-      if (file.name != null && (file.name!.endsWith('.jpg') || file.name!.endsWith('.png') || file.name!.endsWith('.mp4'))) {
-        final cacheFile = File(p.join(statusDir.path, file.name));
-        
-        // If file doesn't exist in cache, copy it
-        // Note: For production, you might want to compare file size or last modified
-        if (!await cacheFile.exists()) {
-          final bytes = await saf.getDocumentContent(file.uri);
-          if (bytes != null) {
-            await cacheFile.writeAsBytes(bytes);
-          }
-        }
-        syncedFiles.add(cacheFile);
+      final List<File> syncedFiles = [];
+      final cacheDir = await getTemporaryDirectory();
+      final statusDir = Directory(p.join(cacheDir.path, isBusiness ? 'statuses_business' : 'statuses_messenger'));
+      
+      if (!await statusDir.exists()) {
+        await statusDir.create(recursive: true);
       }
+
+      for (var fileMap in filesList) {
+        final String name = fileMap['name'];
+        final String fileUri = fileMap['uri'];
+
+        if (name.endsWith('.jpg') || name.endsWith('.png') || name.endsWith('.mp4')) {
+          final cacheFile = File(p.join(statusDir.path, name));
+          
+          if (!await cacheFile.exists()) {
+            final Uint8List? bytes = await _channel.invokeMethod('getFileContent', {'uri': fileUri});
+            if (bytes != null) {
+              await cacheFile.writeAsBytes(bytes);
+            }
+          }
+          syncedFiles.add(cacheFile);
+        }
+      }
+      
+      return syncedFiles;
+    } catch (e) {
+      return [];
     }
-    
-    return syncedFiles;
   }
 }

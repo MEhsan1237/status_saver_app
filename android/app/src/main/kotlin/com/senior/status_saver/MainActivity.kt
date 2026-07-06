@@ -10,6 +10,7 @@ import androidx.annotation.NonNull
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import androidx.documentfile.provider.DocumentFile
 
 class MainActivity : FlutterActivity() {
     private val CHANNEL = "com.senior.status_saver/saf"
@@ -26,6 +27,14 @@ class MainActivity : FlutterActivity() {
                 "checkFolderPermission" -> {
                     val uriString = call.argument<String>("uri")
                     result.success(checkFolderPermission(uriString))
+                }
+                "listStatusFiles" -> {
+                    val uriString = call.argument<String>("uri")
+                    listStatusFiles(uriString, result)
+                }
+                "getFileContent" -> {
+                    val uriString = call.argument<String>("uri")
+                    getFileContent(uriString, result)
                 }
                 else -> result.notImplemented()
             }
@@ -54,6 +63,47 @@ class MainActivity : FlutterActivity() {
             persistedUriPermissions.any { it.uri == uri && it.isReadPermission }
         } catch (e: Exception) {
             false
+        }
+    }
+
+    private fun listStatusFiles(uriString: String?, result: MethodChannel.Result) {
+        if (uriString == null) {
+            result.error("INVALID_ARGUMENT", "URI string is null", null)
+            return
+        }
+        try {
+            val directoryUri = Uri.parse(uriString)
+            val root = DocumentFile.fromTreeUri(this, directoryUri)
+            val filesList = mutableListOf<Map<String, String>>()
+            
+            root?.listFiles()?.forEach { file ->
+                if (file.isFile) {
+                    val map = mapOf(
+                        "name" to (file.name ?: ""),
+                        "uri" to file.uri.toString()
+                    )
+                    filesList.add(map)
+                }
+            }
+            result.success(filesList)
+        } catch (e: Exception) {
+            result.error("LIST_ERROR", e.message, null)
+        }
+    }
+
+    private fun getFileContent(uriString: String?, result: MethodChannel.Result) {
+        if (uriString == null) {
+            result.error("INVALID_ARGUMENT", "URI string is null", null)
+            return
+        }
+        try {
+            val fileUri = Uri.parse(uriString)
+            contentResolver.openInputStream(fileUri)?.use { inputStream ->
+                val bytes = inputStream.readBytes()
+                result.success(bytes)
+            } ?: result.error("OPEN_ERROR", "Could not open input stream", null)
+        } catch (e: Exception) {
+            result.error("READ_ERROR", e.message, null)
         }
     }
 
