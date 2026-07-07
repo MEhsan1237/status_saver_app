@@ -71,10 +71,10 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(
-                    Icons.download_for_offline,
-                    size: 100,
-                    color: AppColors.primary,
+                  Image.asset(
+                    'assets/images/app_icon.png',
+                    width: 120,
+                    height: 120,
                   ),
                   const SizedBox(height: 20),
                   Text(

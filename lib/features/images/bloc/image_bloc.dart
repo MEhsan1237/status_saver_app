@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../repository/image_repository.dart';
 import '../../../core/services/saf_service.dart';
@@ -7,14 +8,21 @@ import 'image_state.dart';
 
 class ImageBloc extends Bloc<ImageEvent, ImageState> {
   final ImageRepository repository;
+  Timer? _refreshTimer;
 
   ImageBloc({required this.repository}) : super(ImageInitial()) {
     on<FetchImages>(_onFetchImages);
     on<DownloadImage>(_onDownloadImage);
+    
+    // Industry Level: Auto-refresh every 30 seconds to detect new/deleted statuses
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      add(FetchImages());
+    });
   }
 
   Future<void> _onFetchImages(FetchImages event, Emitter<ImageState> emit) async {
-    emit(ImageLoading());
+    // Only show loading on initial fetch to avoid flickering during auto-refresh
+    if (state is ImageInitial) emit(ImageLoading());
     
     final hasMessenger = await SAFService.hasPermission(isBusiness: false);
     final hasBusiness = await SAFService.hasPermission(isBusiness: true);
@@ -28,7 +36,9 @@ class ImageBloc extends Bloc<ImageEvent, ImageState> {
       final images = await repository.fetchImageStatuses();
       emit(ImagesLoaded(images));
     } catch (e) {
-      emit(ImageError(e.toString()));
+      if (state is ImageInitial) {
+        emit(ImageError(e.toString()));
+      }
     }
   }
 
@@ -46,5 +56,11 @@ class ImageBloc extends Bloc<ImageEvent, ImageState> {
         emit(ImagesLoaded(updatedImages));
       }
     }
+  }
+
+  @override
+  Future<void> close() {
+    _refreshTimer?.cancel();
+    return super.close();
   }
 }

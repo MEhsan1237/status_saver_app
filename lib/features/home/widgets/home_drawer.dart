@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../settings/bloc/theme_bloc.dart';
@@ -31,7 +33,14 @@ class HomeDrawer extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.download_for_offline, size: 60, color: AppColors.white),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(15),
+                    child: Image.asset(
+                      'assets/images/app_icon.png',
+                      width: 60,
+                      height: 60,
+                    ),
+                  ),
                   const SizedBox(height: 10),
                   const Text(
                     AppStrings.appName,
@@ -61,38 +70,53 @@ class HomeDrawer extends StatelessWidget {
             },
           ),
           ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text(AppStrings.about),
+            leading: const Icon(Icons.share),
+            title: const Text(AppStrings.shareApp),
             onTap: () {
-              Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+              Share.share(
+                'Check out Status Saver! The best app to download WhatsApp Statuses easily.\n\nDownload now: https://play.google.com/store/apps/details?id=com.senior.status_saver',
+                subject: 'Download Status Saver App',
+              );
             },
           ),
           ListTile(
             leading: const Icon(Icons.privacy_tip),
             title: const Text(AppStrings.privacyPolicy),
             onTap: () {
-              Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const PrivacyPolicyScreen()));
             },
           ),
           ListTile(
-            leading: const Icon(Icons.share),
-            title: const Text(AppStrings.shareApp),
-            onTap: () {},
-          ),
-          ListTile(
-            leading: const Icon(Icons.star),
-            title: const Text(AppStrings.rateApp),
-            onTap: () {},
+            leading: const Icon(Icons.feedback),
+            title: const Text('Feedback'),
+            onTap: () async {
+              final Uri emailLaunchUri = Uri(
+                scheme: 'mailto',
+                path: 'support@statussaver.com',
+                query: 'subject=Feedback for Status Saver App',
+              );
+              if (!await launchUrl(emailLaunchUri)) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Could not open email app')),
+                  );
+                }
+              }
+            },
           ),
           const Divider(),
+          ListTile(
+            leading: const Icon(Icons.info),
+            title: const Text(AppStrings.about),
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+            },
+          ),
           ListTile(
             leading: const Icon(Icons.verified),
             title: const Text('Version'),
             trailing: const Text(AppStrings.appVersion),
             onTap: () {
-              Navigator.pop(context);
               Navigator.push(context, MaterialPageRoute(builder: (_) => const VersionInfoScreen()));
             },
           ),

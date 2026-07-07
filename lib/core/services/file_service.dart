@@ -1,19 +1,19 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../constants/app_strings.dart';
 
 class FileService {
+  static const MethodChannel _channel = MethodChannel('com.senior.status_saver/saf');
+
   static Future<String> getDownloadPath() async {
     Directory? directory;
-    try {
-      if (Platform.isAndroid) {
-        directory = Directory('/storage/emulated/0/Download/${AppStrings.appName}');
-      } else {
-        directory = await getDownloadsDirectory();
-      }
-    } catch (err) {
-      directory = await getApplicationDocumentsDirectory();
+    if (Platform.isAndroid) {
+      // Industry Standard: Save to public Pictures/Video folder for gallery visibility
+      directory = Directory('/storage/emulated/0/Pictures/${AppStrings.appName}');
+    } else {
+      directory = await getDownloadsDirectory();
     }
 
     if (directory != null && !await directory.exists()) {
@@ -30,7 +30,12 @@ class FileService {
 
       final file = File(filePath);
       if (await file.exists()) {
-        await file.copy(newPath);
+        final copiedFile = await file.copy(newPath);
+        
+        // CRITICAL: Notify Android Gallery that a new file is added
+        if (Platform.isAndroid) {
+          await _channel.invokeMethod('scanFile', {'path': copiedFile.path});
+        }
         return true;
       }
       return false;
@@ -46,27 +51,17 @@ class FileService {
     return await File(newPath).exists();
   }
 
-  static List<String> getWhatsAppPaths() {
-    return [
-      "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses",
-      "/storage/emulated/0/WhatsApp/Media/.Statuses",
-      "/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses",
-      "/storage/emulated/0/WhatsApp Business/Media/.Statuses",
-    ];
-  }
-
   static Future<List<File>> getDownloadedMedia() async {
     final downloadPath = await getDownloadPath();
     final directory = Directory(downloadPath);
     if (await directory.exists()) {
-      return directory
-          .listSync()
-          .whereType<File>()
-          .where((file) =>
-              file.path.endsWith('.jpg') ||
-              file.path.endsWith('.png') ||
-              file.path.endsWith('.mp4'))
-          .toList();
+      final files = directory.listSync().whereType<File>().toList();
+      // Sort by newest first
+      files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+      return files.where((file) =>
+          file.path.endsWith('.jpg') ||
+          file.path.endsWith('.png') ||
+          file.path.endsWith('.mp4')).toList();
     }
     return [];
   }
