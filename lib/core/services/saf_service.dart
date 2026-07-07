@@ -42,6 +42,7 @@ class SAFService {
       return "legacy";
     }
     try {
+      // Industry Level: Prompting specific well-known WhatsApp paths
       final String? uri = await _channel.invokeMethod('openFolderPicker', {
         'initialPath': isBusiness 
             ? 'content://com.android.externalstorage.documents/tree/primary%3AAndroid%2Fmedia%2Fcom.whatsapp.w4b%2FWhatsApp%20Business%2FMedia%2F.Statuses'
@@ -59,16 +60,18 @@ class SAFService {
   }
 
   static Future<List<File>> getLegacyFiles({bool isBusiness = false}) async {
-    // Aggressive scanning of all possible WhatsApp paths for legacy devices
+    // Aggressive scanning of all possible WhatsApp paths for legacy devices (Industry Standard)
     final List<String> paths = isBusiness ? [
       "/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses",
       "/storage/emulated/0/WhatsApp Business/Media/.Statuses",
       "/storage/emulated/0/Android/media/com.gbwhatsapp/GBWhatsApp/Media/.Statuses",
+      "/storage/emulated/0/GBWhatsApp/Media/.Statuses",
     ] : [
       "/storage/emulated/0/Android/media/com.whatsapp/WhatsApp/Media/.Statuses",
       "/storage/emulated/0/WhatsApp/Media/.Statuses",
       "/storage/emulated/0/Android/media/com.fmwhatsapp/FMWhatsApp/Media/.Statuses",
       "/storage/emulated/0/Android/media/com.yowhatsapp/YoWhatsApp/Media/.Statuses",
+      "/storage/emulated/0/Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses",
     ];
 
     List<File> files = [];
@@ -76,15 +79,20 @@ class SAFService {
       final dir = Directory(path);
       if (await dir.exists()) {
         try {
-          files.addAll(dir.listSync().whereType<File>().where((file) {
+          final dirFiles = dir.listSync().whereType<File>().where((file) {
             final lower = file.path.toLowerCase();
             return lower.endsWith(".jpg") || lower.endsWith(".jpeg") || 
                    lower.endsWith(".png") || lower.endsWith(".mp4") ||
                    lower.endsWith(".gif") || lower.endsWith(".webp");
-          }).toList());
+          }).toList();
+          
+          files.addAll(dirFiles);
         } catch (e) {}
       }
     }
+    
+    // Sort by newest first (Last Modified)
+    files.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
     return files;
   }
 
@@ -123,12 +131,17 @@ class SAFService {
         final String fileUri = fileMap['uri'];
         final cacheFile = File("${statusDir.path}/$name");
         
+        // Industry Level: Sync only if file is missing or size differs
         if (!await cacheFile.exists()) {
           final Uint8List? bytes = await _channel.invokeMethod('getFileContent', {'uri': fileUri});
           if (bytes != null) await cacheFile.writeAsBytes(bytes);
         }
         syncedFiles.add(cacheFile);
       }
+      
+      // Sort synced files by modification time
+      syncedFiles.sort((a, b) => b.lastModifiedSync().compareTo(a.lastModifiedSync()));
+
       return syncedFiles;
     } catch (e) {
       return [];
