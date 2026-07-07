@@ -8,14 +8,18 @@ class PermissionService {
       final deviceInfo = DeviceInfoPlugin();
       final androidInfo = await deviceInfo.androidInfo;
 
-      if (androidInfo.version.sdkInt >= 33) {
-        final photos = await Permission.photos.request();
-        final videos = await Permission.videos.request();
-        return photos.isGranted && videos.isGranted;
+      if (androidInfo.version.sdkInt >= 30) {
+        // This is the "Allow All" permission for Android 11+
+        var status = await Permission.manageExternalStorage.request();
+        if (status.isGranted) return true;
+        
+        // Fallback to media permissions
+        await Permission.photos.request();
+        await Permission.videos.request();
       } else {
-        final status = await Permission.storage.request();
-        return status.isGranted;
+        await Permission.storage.request();
       }
+      return await checkPermission();
     }
     return false;
   }
@@ -25,13 +29,10 @@ class PermissionService {
       final deviceInfo = DeviceInfoPlugin();
       final androidInfo = await deviceInfo.androidInfo;
 
-      if (androidInfo.version.sdkInt >= 33) {
-        final photos = await Permission.photos.status;
-        final videos = await Permission.videos.status;
-        return photos.isGranted && videos.isGranted;
+      if (androidInfo.version.sdkInt >= 30) {
+        return await Permission.manageExternalStorage.isGranted;
       } else {
-        final status = await Permission.storage.status;
-        return status.isGranted;
+        return await Permission.storage.isGranted;
       }
     }
     return false;

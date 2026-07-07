@@ -24,26 +24,31 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
-            if (call.method == "openFolderPicker") {
-                val initialPath = call.argument<String>("initialPath")
-                openFolderPicker(initialPath, result)
-            } else if (call.method == "checkFolderPermission") {
-                val uriString = call.argument<String>("uri")
-                result.success(checkFolderPermission(uriString))
-            } else if (call.method == "listStatusFiles") {
-                val uriString = call.argument<String>("uri")
-                listStatusFiles(uriString, result)
-            } else if (call.method == "getFileContent") {
-                val uriString = call.argument<String>("uri")
-                getFileContent(uriString, result)
-            } else if (call.method == "scanFile") {
-                val path = call.argument<String>("path")
-                if (path != null) {
-                    MediaScannerConnection.scanFile(this, arrayOf(path), null, null)
+            when (call.method) {
+                "openFolderPicker" -> {
+                    val initialPath = call.argument<String>("initialPath")
+                    openFolderPicker(initialPath, result)
                 }
-                result.success(true)
-            } else {
-                result.notImplemented()
+                "checkFolderPermission" -> {
+                    val uriString = call.argument<String>("uri")
+                    result.success(checkFolderPermission(uriString))
+                }
+                "listStatusFiles" -> {
+                    val uriString = call.argument<String>("uri")
+                    listStatusFiles(uriString, result)
+                }
+                "getFileContent" -> {
+                    val uriString = call.argument<String>("uri")
+                    getFileContent(uriString, result)
+                }
+                "scanFile" -> {
+                    val path = call.argument<String>("path")
+                    if (path != null) {
+                        MediaScannerConnection.scanFile(this, arrayOf(path), null, null)
+                    }
+                    result.success(true)
+                }
+                else -> result.notImplemented()
             }
         }
     }
@@ -53,13 +58,20 @@ class MainActivity : FlutterActivity() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && initialPath != null) {
-            try {
-                val uri = Uri.parse(initialPath)
-                intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
-            } catch (e: Exception) {}
+        intent.addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // High-End Automation: Takes user DIRECTLY to the .Statuses folder
+            val authority = "com.android.externalstorage.documents"
+            val documentId = if (initialPath?.contains("w4b") == true) {
+                "primary:Android/media/com.whatsapp.w4b/WhatsApp Business/Media/.Statuses"
+            } else {
+                "primary:Android/media/com.whatsapp/WhatsApp/Media/.Statuses"
+            }
+            val uri = DocumentsContract.buildDocumentUri(authority, documentId)
+            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, uri)
         }
+        
         startActivityForResult(intent, 1001)
     }
 

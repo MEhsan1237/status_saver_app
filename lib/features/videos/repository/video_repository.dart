@@ -10,28 +10,38 @@ class VideoRepository {
 
     List<StatusModel> videos = [];
 
+    // Filter only videos from Messenger
     for (var file in messengerFiles) {
-      final isDownloaded = await FileService.isDownloaded(file.path);
-      videos.add(StatusModel(
-        path: file.path,
-        type: StatusType.video,
-        source: StatusSource.whatsapp,
-        isDownloaded: isDownloaded,
-      ));
+      final path = file.path.toLowerCase();
+      if (path.endsWith('.mp4') || path.endsWith('.mkv') || path.endsWith('.3gp')) {
+        final isDownloaded = await FileService.isDownloaded(file.path);
+        videos.add(StatusModel(
+          path: file.path,
+          type: StatusType.video,
+          source: StatusSource.whatsapp,
+          isDownloaded: isDownloaded,
+        ));
+      }
     }
 
+    // Filter only videos from Business
     for (var file in businessFiles) {
-      final isDownloaded = await FileService.isDownloaded(file.path);
-      videos.add(StatusModel(
-        path: file.path,
-        type: StatusType.video,
-        source: StatusSource.whatsappBusiness,
-        isDownloaded: isDownloaded,
-      ));
+      final path = file.path.toLowerCase();
+      if (path.endsWith('.mp4') || path.endsWith('.mkv') || path.endsWith('.3gp')) {
+        final isDownloaded = await FileService.isDownloaded(file.path);
+        videos.add(StatusModel(
+          path: file.path,
+          type: StatusType.video,
+          source: StatusSource.whatsappBusiness,
+          isDownloaded: isDownloaded,
+        ));
+      }
     }
 
-    // Sort combined videos by modification time (Newest First)
-    videos.sort((a, b) => File(b.path).lastModifiedSync().compareTo(File(a.path).lastModifiedSync()));
+    // Sort by Newest First
+    if (videos.isNotEmpty) {
+      videos.sort((a, b) => File(b.path).lastModifiedSync().compareTo(File(a.path).lastModifiedSync()));
+    }
 
     return videos;
   }

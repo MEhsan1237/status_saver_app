@@ -14,8 +14,7 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
     on<FetchVideos>(_onFetchVideos);
     on<DownloadVideo>(_onDownloadVideo);
 
-    // Industry Level: Auto-refresh to handle real-time status updates
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       add(FetchVideos());
     });
   }
@@ -23,21 +22,18 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
   Future<void> _onFetchVideos(FetchVideos event, Emitter<VideoState> emit) async {
     if (state is VideoInitial) emit(VideoLoading());
     
-    final hasMessenger = await SAFService.hasPermission(isBusiness: false);
     final hasBusiness = await SAFService.hasPermission(isBusiness: true);
 
-    if (!hasMessenger && !hasBusiness) {
-      emit(VideoPermissionDenied());
-      return;
+    // Auto-trigger folder picker if permission is missing on modern Android
+    if (!hasBusiness && !await SAFService.isLegacyAndroid()) {
+      await SAFService.requestFolderPermission(isBusiness: true);
     }
 
     try {
       final videos = await repository.fetchVideoStatuses();
       emit(VideosLoaded(videos));
     } catch (e) {
-      if (state is VideoInitial) {
-        emit(VideoError(e.toString()));
-      }
+      if (state is VideoInitial) emit(VideoError(e.toString()));
     }
   }
 
@@ -47,9 +43,7 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
       final success = await FileService.saveStatus(event.path);
       if (success) {
         final updatedVideos = currentState.videos.map((vid) {
-          if (vid.path == event.path) {
-            return vid.copyWith(isDownloaded: true);
-          }
+          if (vid.path == event.path) return vid.copyWith(isDownloaded: true);
           return vid;
         }).toList();
         emit(VideosLoaded(updatedVideos));

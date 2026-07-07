@@ -26,6 +26,14 @@ class FullImageView extends StatelessWidget {
           imageProvider: FileImage(File(status.path)),
           minScale: PhotoViewComputedScale.contained,
           maxScale: PhotoViewComputedScale.covered * 2,
+          errorBuilder: (context, error, stackTrace) {
+            return const Center(
+              child: Text(
+                'Could not load image',
+                style: TextStyle(color: Colors.white),
+              ),
+            );
+          },
         ),
       ),
     );

@@ -14,31 +14,26 @@ class ImageBloc extends Bloc<ImageEvent, ImageState> {
     on<FetchImages>(_onFetchImages);
     on<DownloadImage>(_onDownloadImage);
     
-    // Industry Level: Auto-refresh every 30 seconds to detect new/deleted statuses
-    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       add(FetchImages());
     });
   }
 
   Future<void> _onFetchImages(FetchImages event, Emitter<ImageState> emit) async {
-    // Only show loading on initial fetch to avoid flickering during auto-refresh
     if (state is ImageInitial) emit(ImageLoading());
     
     final hasMessenger = await SAFService.hasPermission(isBusiness: false);
-    final hasBusiness = await SAFService.hasPermission(isBusiness: true);
-
-    if (!hasMessenger && !hasBusiness) {
-      emit(ImagePermissionDenied());
-      return;
+    
+    // Auto-trigger folder picker if permission is missing on modern Android
+    if (!hasMessenger && !await SAFService.isLegacyAndroid()) {
+      await SAFService.requestFolderPermission(isBusiness: false);
     }
 
     try {
       final images = await repository.fetchImageStatuses();
       emit(ImagesLoaded(images));
     } catch (e) {
-      if (state is ImageInitial) {
-        emit(ImageError(e.toString()));
-      }
+      if (state is ImageInitial) emit(ImageError(e.toString()));
     }
   }
 
@@ -48,9 +43,7 @@ class ImageBloc extends Bloc<ImageEvent, ImageState> {
       final success = await FileService.saveStatus(event.path);
       if (success) {
         final updatedImages = currentState.images.map((img) {
-          if (img.path == event.path) {
-            return img.copyWith(isDownloaded: true);
-          }
+          if (img.path == event.path) return img.copyWith(isDownloaded: true);
           return img;
         }).toList();
         emit(ImagesLoaded(updatedImages));

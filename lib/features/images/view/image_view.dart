@@ -4,9 +4,7 @@ import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../bloc/image_bloc.dart';
 import '../bloc/image_event.dart';
 import '../bloc/image_state.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
-import '../../../core/services/saf_service.dart';
 import '../../../core/widgets/shimmer_loading.dart';
 import '../widgets/image_card.dart';
 
@@ -28,7 +26,7 @@ class _ImageViewState extends State<ImageView> {
   Widget build(BuildContext context) {
     return BlocBuilder<ImageBloc, ImageState>(
       builder: (context, state) {
-        if (state is ImageLoading) {
+        if (state is ImageLoading || state is ImageInitial || state is ImagePermissionDenied) {
           return const ShimmerLoading();
         } else if (state is ImagesLoaded) {
           if (state.images.isEmpty) {
@@ -60,41 +58,6 @@ class _ImageViewState extends State<ImageView> {
                   );
                 },
               ),
-            ),
-          );
-        } else if (state is ImagePermissionDenied) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.security, size: 80, color: Colors.grey),
-                const SizedBox(height: 16),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 32),
-                  child: Text(
-                    'To show your statuses, we need access to the WhatsApp status folder.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: () async {
-                    await SAFService.requestFolderPermission(isBusiness: false);
-                    if (mounted) context.read<ImageBloc>().add(FetchImages());
-                  },
-                  style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-                  child: const Text('Grant WA Permission', style: TextStyle(color: Colors.white)),
-                ),
-                const SizedBox(height: 12),
-                OutlinedButton(
-                  onPressed: () async {
-                    await SAFService.requestFolderPermission(isBusiness: true);
-                    if (mounted) context.read<ImageBloc>().add(FetchImages());
-                  },
-                  child: const Text('Grant WA Business Permission'),
-                ),
-              ],
             ),
           );
         } else if (state is ImageError) {
