@@ -53,7 +53,6 @@ class MainActivity : FlutterActivity() {
         val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-        intent.addFlags(Intent.FLAG_GRANT_PREFIX_URI_PERMISSION)
         
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && initialPath != null) {
             try {
@@ -87,19 +86,20 @@ class MainActivity : FlutterActivity() {
             
             val files = root?.listFiles()
             if (files != null) {
-                // Production: Iterate through all files without skipping hidden ones
                 for (file in files) {
-                    val name = file.name
-                    if (name != null) {
-                        val lowerName = name.lowercase()
-                        if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || 
-                            lowerName.endsWith(".png") || lowerName.endsWith(".mp4") ||
-                            lowerName.endsWith(".gif") || lowerName.endsWith(".webp")) {
-                            
-                            val map = HashMap<String, String>()
-                            map["name"] = name
-                            map["uri"] = file.uri.toString()
-                            filesList.add(map)
+                    if (file.isFile) {
+                        val name = file.name
+                        if (name != null) {
+                            val lowerName = name.lowercase()
+                            if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || 
+                                lowerName.endsWith(".png") || lowerName.endsWith(".mp4") ||
+                                lowerName.endsWith(".gif") || lowerName.endsWith(".webp")) {
+                                
+                                val map = HashMap<String, String>()
+                                map["name"] = name
+                                map["uri"] = file.uri.toString()
+                                filesList.add(map)
+                            }
                         }
                     }
                 }
@@ -119,12 +119,12 @@ class MainActivity : FlutterActivity() {
             val fileUri = Uri.parse(uriString)
             val inputStream = contentResolver.openInputStream(fileUri)
             if (inputStream != null) {
-                val buffer = ByteArray(4096)
                 val os = ByteArrayOutputStream()
-                var bytesRead = inputStream.read(buffer)
-                while (bytesRead != -1) {
-                    os.write(buffer, 0, bytesRead)
-                    bytesRead = inputStream.read(buffer)
+                val buffer = ByteArray(8192)
+                var len = inputStream.read(buffer)
+                while (len != -1) {
+                    os.write(buffer, 0, len)
+                    len = inputStream.read(buffer)
                 }
                 val bytes = os.toByteArray()
                 inputStream.close()
