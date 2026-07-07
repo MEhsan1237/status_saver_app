@@ -14,19 +14,19 @@ class VideoBloc extends Bloc<VideoEvent, VideoState> {
     on<FetchVideos>(_onFetchVideos);
     on<DownloadVideo>(_onDownloadVideo);
 
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      add(FetchVideos());
+    // Industry Level: Turbo Refresh (5 seconds)
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!isClosed) add(FetchVideos());
     });
   }
 
   Future<void> _onFetchVideos(FetchVideos event, Emitter<VideoState> emit) async {
     if (state is VideoInitial) emit(VideoLoading());
     
-    final hasBusiness = await SAFService.hasPermission(isBusiness: true);
-
-    // Auto-trigger folder picker if permission is missing on modern Android
-    if (!hasBusiness && !await SAFService.isLegacyAndroid()) {
-      await SAFService.requestFolderPermission(isBusiness: true);
+    final hasPermission = await SAFService.hasPermission();
+    if (!hasPermission) {
+      emit(VideoPermissionDenied());
+      return;
     }
 
     try {

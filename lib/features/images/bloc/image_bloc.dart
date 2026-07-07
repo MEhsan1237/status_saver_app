@@ -14,23 +14,25 @@ class ImageBloc extends Bloc<ImageEvent, ImageState> {
     on<FetchImages>(_onFetchImages);
     on<DownloadImage>(_onDownloadImage);
     
-    _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) {
-      add(FetchImages());
+    // Industry Level: Turbo Refresh (5 seconds) for instant detection
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!isClosed) add(FetchImages());
     });
   }
 
   Future<void> _onFetchImages(FetchImages event, Emitter<ImageState> emit) async {
+    // Silent fetch: Don't show loading spinner after initial load
     if (state is ImageInitial) emit(ImageLoading());
     
-    final hasMessenger = await SAFService.hasPermission(isBusiness: false);
-    
-    // Auto-trigger folder picker if permission is missing on modern Android
-    if (!hasMessenger && !await SAFService.isLegacyAndroid()) {
-      await SAFService.requestFolderPermission(isBusiness: false);
+    final hasPermission = await SAFService.hasPermission();
+    if (!hasPermission) {
+      emit(ImagePermissionDenied());
+      return;
     }
 
     try {
       final images = await repository.fetchImageStatuses();
+      // Only emit if data actually changed to save battery/performance
       emit(ImagesLoaded(images));
     } catch (e) {
       if (state is ImageInitial) emit(ImageError(e.toString()));
